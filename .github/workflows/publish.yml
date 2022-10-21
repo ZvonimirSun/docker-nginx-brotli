@@ -6,7 +6,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: nginx:stable-alpine-brotli
+  IMAGE_NAME: nginx
 
 jobs:
   build-and-push-image:
