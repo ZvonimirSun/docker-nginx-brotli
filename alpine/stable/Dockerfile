@@ -21,7 +21,9 @@ FROM nginx:stable-alpine
 
 ENV TIME_ZONE=Asia/Shanghai
 
-RUN ln -snf /usr/share/zoneinfo/$TIME_ZONE /etc/localtime && echo $TIME_ZONE > /etc/timezone
+RUN ln -snf /usr/share/zoneinfo/$TIME_ZONE /etc/localtime && echo $TIME_ZONE > /etc/timezone \
+    && sed -i '1i/load_module \/usr\/lib\/nginx\/modules\/ngx_http_brotli_filter_module.so;' /etc/nginx/nginx.conf \
+    && sed -i '1i/load_module \/usr\/lib\/nginx\/modules\/ngx_http_brotli_static_module.so;' /etc/nginx/nginx.conf
 
 COPY --from=builder /root/nginx-${NGINX_VERSION}/objs/ngx_http_brotli_filter_module.so /usr/lib/nginx/modules/
 COPY --from=builder /root/nginx-${NGINX_VERSION}/objs/ngx_http_brotli_static_module.so /usr/lib/nginx/modules/
