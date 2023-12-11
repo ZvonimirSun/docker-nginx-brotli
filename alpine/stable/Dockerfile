@@ -28,7 +28,6 @@ RUN apk add --update --no-cache build-base git pcre-dev openssl-dev zlib-dev lin
     --http-fastcgi-temp-path=/var/cache/nginx/fastcgi_temp \
     --http-uwsgi-temp-path=/var/cache/nginx/uwsgi_temp \
     --http-scgi-temp-path=/var/cache/nginx/scgi_temp \
-    --with-perl_modules_path=/usr/lib/perl5/vendor_perl \
     --user=nginx \
     --group=nginx \
     --with-compat \
@@ -49,14 +48,15 @@ RUN apk add --update --no-cache build-base git pcre-dev openssl-dev zlib-dev lin
     --with-http_stub_status_module \
     --with-http_sub_module \
     --with-http_v2_module \
+    --with-http_v3_module \
     --with-mail \
     --with-mail_ssl_module \
     --with-stream \
     --with-stream_realip_module \
     --with-stream_ssl_module \
     --with-stream_ssl_preread_module \
-    --with-cc-opt='-Os -fomit-frame-pointer -g' \
-    --with-ld-opt=-Wl,--as-needed,-O1,--sort-common \
+    --with-cc-opt='-g -O2 -ffile-prefix-map=/data/builder/debuild/nginx-1.25.3/debian/debuild-base/nginx-1.25.3=. -fstack-protector-strong -Wformat -Werror=format-security -Wp,-D_FORTIFY_SOURCE=2 -fPIC' \
+    --with-ld-opt='-Wl,-z,relro -Wl,-z,now -Wl,--as-needed -pie' \
     && make modules
 
 FROM nginx:${version}-alpine
