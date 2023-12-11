@@ -29,14 +29,18 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Get Version
+        id: get_version
+        run: echo "version=$(docker pull nginx:${{ matrix.version }} > /dev/null && docker inspect nginx:stable |grep NGINX_VERSION |head -n 1|sed 's/                "NGINX_VERSION=//g' | sed 's/",//g')" >> "$GITHUB_OUTPUT"
+
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository_owner }}/nginx-brotli
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{version}},value=${{ steps.get_version.outputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ steps.get_version.outputs.version }}
             type=raw,value=${{ matrix.version }}-${{ matrix.platform }}
             type=raw,value=alpine,enable=${{ matrix.version == 'mainline' && matrix.platform == 'alpine' }}
             type=raw,value=latest,enable=${{ matrix.version == 'mainline' && matrix.platform == 'debian' }}
