@@ -31,7 +31,7 @@ jobs:
 
       - name: Get Version
         id: get_version
-        run: echo "version=$(docker pull nginx:${{ matrix.version }} > /dev/null && docker inspect nginx:stable |grep NGINX_VERSION |head -n 1|sed 's/                "NGINX_VERSION=//g' | sed 's/",//g')" >> "$GITHUB_OUTPUT"
+        run: echo "version=$(docker pull nginx:${{ matrix.version }} > /dev/null && docker inspect nginx:${{ matrix.version }} |grep NGINX_VERSION |head -n 1|sed 's/                "NGINX_VERSION=//g' | sed 's/",//g')" >> "$GITHUB_OUTPUT"
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
