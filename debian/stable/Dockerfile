@@ -19,9 +19,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && git submodule update --init --recursive \
     && cd ../nginx-${NGINX_VERSION} \
     && CONFIG=`nginx -V 2>&1 | tr '\n' ' ' | sed 's/^.* configure arguments: //g'` \
-    && ./configure \
-    --add-dynamic-module=../ngx_brotli \
-    $CONFIG \
+    && echo "./configure --add-dynamic-module=../ngx_brotli $CONFIG" > configure.sh \
+    && chmod +x configure.sh \
+    && ./configure.sh \
     && make modules
 
 FROM nginx:stable
