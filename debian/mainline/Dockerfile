@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && cd ngx_brotli \
     && git submodule update --init --recursive \
     && cd ../nginx-${NGINX_VERSION} \
-    && CONFIG=`nginx -V 2>&1 | tr '\n' ' ' | sed 's/^.* configure arguments: //g'`
+    && CONFIG=`nginx -V 2>&1 | tr '\n' ' ' | sed 's/^.* configure arguments: //g'` \
     && ./configure \
     --add-dynamic-module=../ngx_brotli \
     $CONFIG \
