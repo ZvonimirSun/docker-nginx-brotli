@@ -1,4 +1,4 @@
-FROM nginx:stable-alpine AS builder
+FROM nginx:stable-alpine-slim AS builder
 
 ARG NGINX_VERSION
 
@@ -17,8 +17,6 @@ RUN apk add --update --no-cache build-base git pcre-dev openssl-dev zlib-dev lin
     && make modules
 
 FROM nginx:stable-alpine
-
-ARG version
 
 ENV TIME_ZONE=Asia/Shanghai
 
