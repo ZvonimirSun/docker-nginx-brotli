@@ -15,7 +15,7 @@ jobs:
     strategy:
       matrix:
         version: [stable, mainline]
-        platform: [alpine]
+        platform: [debian, alpine]
 
     steps:
       - name: Checkout repository
