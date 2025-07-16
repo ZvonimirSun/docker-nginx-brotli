@@ -9,7 +9,7 @@ WORKDIR /root/
 
 RUN sh -c ' \
     set -e \
-    '"$INSTALL_PKGS"' \
+    '$INSTALL_PKGS' \
     && wget http://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz \
     && tar zxf nginx-${NGINX_VERSION}.tar.gz \
     && git clone https://github.com/google/ngx_brotli.git \
