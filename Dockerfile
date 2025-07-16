@@ -8,7 +8,7 @@ FROM $NGINX_IMAGE AS builder
 WORKDIR /root/
 
 RUN set -e \
-    && eval "${INSTALL_PKGS}" \
+    && eval ${INSTALL_PKGS} \
     && wget http://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz \
     && tar zxf nginx-${NGINX_VERSION}.tar.gz \
     && git clone https://github.com/google/ngx_brotli.git \
