@@ -7,7 +7,9 @@ FROM ${NGINX_IMAGE} AS builder
 
 WORKDIR /root/
 
-RUN $INSTALL_PKGS \
+RUN sh -c ' \
+    set -e \
+    '"$INSTALL_PKGS"' \
     && wget http://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz \
     && tar zxf nginx-${NGINX_VERSION}.tar.gz \
     && git clone https://github.com/google/ngx_brotli.git \
@@ -18,7 +20,8 @@ RUN $INSTALL_PKGS \
     && echo "./configure --add-dynamic-module=../ngx_brotli $CONFIG" > configure.sh \
     && chmod +x configure.sh \
     && ./configure.sh \
-    && make modules
+    && make modules \
+'
 
 FROM ${NGINX_IMAGE}
 
