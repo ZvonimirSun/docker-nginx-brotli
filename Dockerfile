@@ -7,9 +7,8 @@ FROM ${NGINX_IMAGE} AS builder
 
 WORKDIR /root/
 
-RUN sh -c ' \
-    set -e \
-    '$INSTALL_PKGS' \
+RUN set -e \
+    && eval $INSTALL_PKGS \
     && wget http://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz \
     && tar zxf nginx-${NGINX_VERSION}.tar.gz \
     && git clone https://github.com/google/ngx_brotli.git \
@@ -21,7 +20,6 @@ RUN sh -c ' \
     && chmod +x configure.sh \
     && ./configure.sh \
     && make modules \
-'
 
 FROM ${NGINX_IMAGE}
 
