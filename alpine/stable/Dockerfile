@@ -1,4 +1,4 @@
-FROM nginx:stable-alpine-slim AS builder
+FROM nginx:stable-alpine AS builder
 
 ARG NGINX_VERSION
 
