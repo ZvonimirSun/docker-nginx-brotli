@@ -21,7 +21,7 @@ RUN set -e \
     && ./configure.sh \
     && make modules \
 
-FROM ${NGINX_IMAGE}
+FROM ${NGINX_IMAGE} AS final
 
 ENV TIME_ZONE=Asia/Shanghai
 
