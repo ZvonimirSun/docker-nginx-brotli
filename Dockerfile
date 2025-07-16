@@ -1,10 +1,13 @@
-FROM nginx:stable-alpine AS builder
-
+# 通用Dockerfile，支持alpine和debian，参数由流水线传递
+ARG NGINX_IMAGE
 ARG NGINX_VERSION
+ARG INSTALL_PKGS
+
+FROM ${NGINX_IMAGE} AS builder
 
 WORKDIR /root/
 
-RUN apk add --update --no-cache build-base git pcre-dev openssl-dev zlib-dev linux-headers brotli-dev \
+RUN $INSTALL_PKGS \
     && wget http://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz \
     && tar zxf nginx-${NGINX_VERSION}.tar.gz \
     && git clone https://github.com/google/ngx_brotli.git \
@@ -17,7 +20,7 @@ RUN apk add --update --no-cache build-base git pcre-dev openssl-dev zlib-dev lin
     && ./configure.sh \
     && make modules
 
-FROM nginx:stable-alpine
+FROM ${NGINX_IMAGE}
 
 ENV TIME_ZONE=Asia/Shanghai
 
@@ -27,3 +30,4 @@ RUN ln -snf /usr/share/zoneinfo/$TIME_ZONE /etc/localtime && echo $TIME_ZONE > /
 
 COPY --from=builder /root/nginx-${NGINX_VERSION}/objs/ngx_http_brotli_filter_module.so /usr/lib/nginx/modules/
 COPY --from=builder /root/nginx-${NGINX_VERSION}/objs/ngx_http_brotli_static_module.so /usr/lib/nginx/modules/
+
