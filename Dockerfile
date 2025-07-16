@@ -3,7 +3,7 @@ ARG NGINX_IMAGE
 ARG NGINX_VERSION
 ARG INSTALL_PKGS
 
-FROM ${NGINX_IMAGE} AS builder
+FROM $NGINX_IMAGE AS builder
 
 WORKDIR /root/
 
@@ -19,9 +19,9 @@ RUN set -e \
     && echo "./configure --add-dynamic-module=../ngx_brotli $CONFIG" > configure.sh \
     && chmod +x configure.sh \
     && ./configure.sh \
-    && make modules \
+    && make modules
 
-FROM ${NGINX_IMAGE} AS final
+FROM $NGINX_IMAGE AS final
 
 ENV TIME_ZONE=Asia/Shanghai
 
