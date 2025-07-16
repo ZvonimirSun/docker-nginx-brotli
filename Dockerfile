@@ -1,14 +1,15 @@
 # 通用Dockerfile，支持alpine和debian，参数由流水线传递
 ARG NGINX_IMAGE
-ARG NGINX_VERSION
 ARG INSTALL_PKGS
 
 FROM $NGINX_IMAGE AS builder
 
+ARG INSTALL_PKGS
+
 WORKDIR /root/
 
 RUN set -ex \
-    && eval ${INSTALL_PKGS} \
+    && sh -c "${INSTALL_PKGS}" \
     && wget http://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz \
     && tar zxf nginx-${NGINX_VERSION}.tar.gz \
     && git clone https://github.com/google/ngx_brotli.git \
