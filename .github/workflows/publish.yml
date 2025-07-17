@@ -2,6 +2,11 @@ name: Publish Docker image
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Nginx version (optional, if not provided will be auto-detected)'
+        required: false
+        type: string
 
 env:
   IMAGE_NAME: nginx
@@ -13,20 +18,16 @@ jobs:
       matrix:
         include:
           - platform: debian
-            version: stable
-            nginx_image: nginx:stable
+            branch: stable
             install_pkgs: apt-get update && apt-get install -y --no-install-recommends build-essential git libpcre3-dev libssl-dev zlib1g-dev libbrotli-dev wget
           - platform: debian
-            version: mainline
-            nginx_image: nginx:mainline
+            branch: mainline
             install_pkgs: apt-get update && apt-get install -y --no-install-recommends build-essential git libpcre3-dev libssl-dev zlib1g-dev libbrotli-dev wget
           - platform: alpine
-            version: stable
-            nginx_image: nginx:stable-alpine
+            branch: stable
             install_pkgs: apk add --update --no-cache build-base git pcre-dev openssl-dev zlib-dev linux-headers brotli-dev
           - platform: alpine
-            version: mainline
-            nginx_image: nginx:mainline-alpine
+            branch: mainline
             install_pkgs: apk add --update --no-cache build-base git pcre-dev openssl-dev zlib-dev linux-headers brotli-dev
 
     steps:
@@ -43,7 +44,14 @@ jobs:
 
       - name: Get Version
         id: get_version
-        run: echo "version=$(docker pull nginx:${{ matrix.version }} > /dev/null && docker inspect nginx:${{ matrix.version }} |grep NGINX_VERSION |head -n 1|sed 's/                "NGINX_VERSION=//g' | sed 's/",//g')" >> "$GITHUB_OUTPUT"
+        if: ${{ !inputs.version }}
+        run: |
+          if [ "${{ matrix.platform }}" = "debian" ]; then
+            IMAGE="nginx:${{ matrix.branch }}"
+          else
+            IMAGE="nginx:${{ matrix.branch }}-${{ matrix.platform }}"
+          fi
+          echo "version=$(docker pull $IMAGE > /dev/null && docker inspect $IMAGE |grep NGINX_VERSION |head -n 1|sed 's/                "NGINX_VERSION=//g' | sed 's/",//g')" >> "$GITHUB_OUTPUT"
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
@@ -51,16 +59,19 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository_owner }}/nginx-brotli
           tags: |
-            # debian 主线和稳定
-            type=semver,pattern={{version}},value=${{ steps.get_version.outputs.version }},enable=${{ matrix.platform == 'debian' }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ steps.get_version.outputs.version }},enable=${{ matrix.platform == 'debian' }}
-            type=raw,value=${{ matrix.version }},enable=${{ matrix.platform == 'debian' && matrix.version != 'mainline' }}
-            type=raw,value=latest,enable=${{ matrix.platform == 'debian' && matrix.version == 'mainline' }}
-            # 其它平台（如alpine）
-            type=semver,pattern={{version}}-${{ matrix.platform }},value=${{ steps.get_version.outputs.version }},enable=${{ matrix.platform != 'debian' }}
-            type=semver,pattern={{major}}.{{minor}}-${{ matrix.platform }},value=${{ steps.get_version.outputs.version }},enable=${{ matrix.platform != 'debian' }}
-            type=raw,value=${{ matrix.version }}-${{ matrix.platform }},enable=${{ matrix.platform != 'debian' && matrix.version != 'mainline' }}
-            type=raw,value=${{ matrix.platform }},enable=${{ matrix.platform != 'debian' && matrix.version == 'mainline' }}
+            # 手动输入版本时只输出版本号
+            type=raw,value=${{ inputs.version }},enable=${{ inputs.version && matrix.platform == 'debian' }}
+            type=raw,value=${{ inputs.version }}-${{ matrix.platform }},enable=${{ inputs.version && matrix.platform != 'debian' }}
+            # 自动检测版本时使用完整的semver格式
+            type=semver,pattern={{version}},value=${{ steps.get_version.outputs.version }},enable=${{ !inputs.version && matrix.platform == 'debian' }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ steps.get_version.outputs.version }},enable=${{ !inputs.version && matrix.platform == 'debian' }}
+            type=raw,value=${{ matrix.branch }},enable=${{ !inputs.version && matrix.platform == 'debian' && matrix.branch != 'mainline' }}
+            type=raw,value=latest,enable=${{ !inputs.version && matrix.platform == 'debian' && matrix.branch == 'mainline' }}
+            # 其它平台（如alpine）自动检测版本
+            type=semver,pattern={{version}}-${{ matrix.platform }},value=${{ steps.get_version.outputs.version }},enable=${{ !inputs.version && matrix.platform != 'debian' }}
+            type=semver,pattern={{major}}.{{minor}}-${{ matrix.platform }},value=${{ steps.get_version.outputs.version }},enable=${{ !inputs.version && matrix.platform != 'debian' }}
+            type=raw,value=${{ matrix.branch }}-${{ matrix.platform }},enable=${{ !inputs.version && matrix.platform != 'debian' && matrix.branch != 'mainline' }}
+            type=raw,value=${{ matrix.platform }},enable=${{ !inputs.version && matrix.platform != 'debian' && matrix.branch == 'mainline' }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
@@ -71,6 +82,6 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            NGINX_IMAGE=${{ matrix.nginx_image }}
-            NGINX_VERSION=${{ steps.get_version.outputs.version }}
+            NGINX_IMAGE=nginx:${{ inputs.version || steps.get_version.outputs.version }}${{ matrix.platform == 'debian' && '' || format('-{0}', matrix.platform) }}
+            NGINX_VERSION=${{ inputs.version || steps.get_version.outputs.version }}
             INSTALL_PKGS=${{ matrix.install_pkgs }}
