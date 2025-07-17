@@ -15,91 +15,7 @@ env:
   IMAGE_NAME: nginx
 
 jobs:
-  check-versions:
-    runs-on: ubuntu-latest
-    outputs:
-      should-build: ${{ steps.version-check.outputs.should-build }}
-      versions: ${{ steps.version-check.outputs.versions }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Check for new versions
-        id: version-check
-        run: |
-          # 如果是手动触发且指定了版本，直接构建
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.version }}" ]; then
-            echo "should-build=true" >> "$GITHUB_OUTPUT"
-            echo "versions={\"debian-stable\":\"${{ inputs.version }}\",\"debian-mainline\":\"${{ inputs.version }}\",\"alpine-stable\":\"${{ inputs.version }}\",\"alpine-mainline\":\"${{ inputs.version }}\"}" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          # 检查各个分支的版本
-          declare -A current_versions
-          declare -A registry_versions
-          
-          # 获取当前 registry 中的版本
-          echo "检查 registry 中的现有版本..."
-          
-          # 检查各个官方镜像的版本
-          platforms=("debian" "alpine")
-          branches=("stable" "mainline")
-          
-          has_new_version=false
-          versions_json="{"
-          
-          for platform in "${platforms[@]}"; do
-            for branch in "${branches[@]}"; do
-              echo "检查 ${platform}-${branch} 版本..."
-              
-              if [ "$platform" = "debian" ]; then
-                IMAGE="nginx:$branch"
-              else
-                IMAGE="nginx:$branch-$platform"
-              fi
-              
-              # 获取官方镜像版本
-              official_version=$(docker pull $IMAGE > /dev/null 2>&1 && docker inspect $IMAGE 2>/dev/null | grep NGINX_VERSION | head -n 1 | sed 's/.*"NGINX_VERSION=//g' | sed 's/",.*//g')
-              
-              if [ -n "$official_version" ]; then
-                echo "官方 ${platform}-${branch} 版本: $official_version"
-                
-                # 检查我们的 registry 中是否已存在该版本
-                if [ "$platform" = "debian" ]; then
-                  our_tag="$official_version"
-                else
-                  our_tag="$official_version-$platform"
-                fi
-                
-                # 尝试拉取我们的镜像检查是否存在
-                if ! docker pull ghcr.io/${{ github.repository_owner }}/nginx-brotli:$our_tag > /dev/null 2>&1; then
-                  echo "发现新版本: ${platform}-${branch} $official_version"
-                  has_new_version=true
-                fi
-                
-                # 构建版本信息 JSON
-                if [ "$versions_json" != "{" ]; then
-                  versions_json="${versions_json},"
-                fi
-                versions_json="${versions_json}\"${platform}-${branch}\":\"${official_version}\""
-              fi
-            done
-          done
-          
-          versions_json="${versions_json}}"
-          
-          echo "should-build=$has_new_version" >> "$GITHUB_OUTPUT"
-          echo "versions=$versions_json" >> "$GITHUB_OUTPUT"
-          
-          if [ "$has_new_version" = "true" ]; then
-            echo "发现新版本，将触发构建"
-          else
-            echo "没有发现新版本，跳过构建"
-          fi
-
   build-and-push-image:
-    needs: check-versions
-    if: needs.check-versions.outputs.should-build == 'true'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -128,54 +44,64 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Get Version
-        id: get_version
+      - name: Get version and check if build needed
+        id: version_check
         run: |
-          # 如果是手动触发且指定了版本，使用指定版本
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.version }}" ]; then
-            echo "version=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+          echo "检查 ${{ matrix.platform }}-${{ matrix.branch }} 版本..."
+          
+          # 如果手动指定了版本且当前是mainline分支，则跳过构建
+          if [ -n "${{ inputs.version }}" ] && [ "${{ matrix.branch }}" = "mainline" ]; then
+            echo "手动指定版本时跳过mainline分支构建"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           
-          # 从检查步骤的输出中获取版本
-          versions='${{ needs.check-versions.outputs.versions }}'
-          key="${{ matrix.platform }}-${{ matrix.branch }}"
-          version=$(echo "$versions" | grep -o "\"$key\":\"[^\"]*\"" | cut -d'"' -f4)
-          
-          if [ -z "$version" ]; then
-            # 如果没有从输出中获取到版本，重新检测
+          # 确定版本
+          if [ -n "${{ inputs.version }}" ]; then
+            # 使用手动指定的版本
+            version="${{ inputs.version }}"
+            echo "手动指定版本: $version"
+          else
+            # 自动检测官方镜像版本
             if [ "${{ matrix.platform }}" = "debian" ]; then
               IMAGE="nginx:${{ matrix.branch }}"
             else
               IMAGE="nginx:${{ matrix.branch }}-${{ matrix.platform }}"
             fi
-            version=$(docker pull $IMAGE > /dev/null && docker inspect $IMAGE | grep NGINX_VERSION | head -n 1 | sed 's/.*"NGINX_VERSION=//g' | sed 's/",.*//g')
+            
+            # 获取官方镜像版本
+            version=$(docker pull $IMAGE > /dev/null 2>&1 && docker inspect $IMAGE 2>/dev/null | grep NGINX_VERSION | head -n 1 | sed 's/.*"NGINX_VERSION=//g' | sed 's/",.*//g')
+            echo "官方 ${{ matrix.platform }}-${{ matrix.branch }} 版本: $version"
           fi
           
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "检测到版本: $version"
-
-      - name: Check if image exists
-        id: image_check
-        run: |
-          version="${{ steps.get_version.outputs.version }}"
+          if [ -z "$version" ]; then
+            echo "无法获取版本信息，跳过构建"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          
+          # 确定镜像标签
           if [ "${{ matrix.platform }}" = "debian" ]; then
             tag="$version"
           else
             tag="$version-${{ matrix.platform }}"
           fi
           
-          # 检查镜像是否已存在
-          if docker pull ghcr.io/${{ github.repository_owner }}/nginx-brotli:$tag > /dev/null 2>&1; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-            echo "镜像 $tag 已存在，跳过构建"
+          # 检查镜像是否已存在（使用 manifest inspect 避免下载整个镜像）
+          image_name="ghcr.io/${{ github.repository_owner }}/nginx-brotli:$tag"
+          echo "检查镜像是否存在: $image_name"
+          if docker manifest inspect "$image_name" > /dev/null 2>&1; then
+            echo "镜像已存在: $tag，跳过构建"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
           else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-            echo "镜像 $tag 不存在，开始构建"
+            echo "镜像不存在: $tag，需要构建"
+            echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
+          
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Extract metadata (tags, labels) for Docker
-        if: steps.image_check.outputs.exists == 'false'
+        if: steps.version_check.outputs.skip == 'false'
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -185,18 +111,18 @@ jobs:
             type=raw,value=${{ inputs.version }},enable=${{ inputs.version && matrix.platform == 'debian' }}
             type=raw,value=${{ inputs.version }}-${{ matrix.platform }},enable=${{ inputs.version && matrix.platform != 'debian' }}
             # 自动检测版本时使用完整的semver格式
-            type=semver,pattern={{version}},value=${{ steps.get_version.outputs.version }},enable=${{ !inputs.version && matrix.platform == 'debian' }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ steps.get_version.outputs.version }},enable=${{ !inputs.version && matrix.platform == 'debian' }}
+            type=semver,pattern={{version}},value=${{ steps.version_check.outputs.version }},enable=${{ !inputs.version && matrix.platform == 'debian' }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ steps.version_check.outputs.version }},enable=${{ !inputs.version && matrix.platform == 'debian' }}
             type=raw,value=${{ matrix.branch }},enable=${{ !inputs.version && matrix.platform == 'debian' && matrix.branch != 'mainline' }}
             type=raw,value=latest,enable=${{ !inputs.version && matrix.platform == 'debian' && matrix.branch == 'mainline' }}
             # 其它平台（如alpine）自动检测版本
-            type=semver,pattern={{version}}-${{ matrix.platform }},value=${{ steps.get_version.outputs.version }},enable=${{ !inputs.version && matrix.platform != 'debian' }}
-            type=semver,pattern={{major}}.{{minor}}-${{ matrix.platform }},value=${{ steps.get_version.outputs.version }},enable=${{ !inputs.version && matrix.platform != 'debian' }}
+            type=semver,pattern={{version}}-${{ matrix.platform }},value=${{ steps.version_check.outputs.version }},enable=${{ !inputs.version && matrix.platform != 'debian' }}
+            type=semver,pattern={{major}}.{{minor}}-${{ matrix.platform }},value=${{ steps.version_check.outputs.version }},enable=${{ !inputs.version && matrix.platform != 'debian' }}
             type=raw,value=${{ matrix.branch }}-${{ matrix.platform }},enable=${{ !inputs.version && matrix.platform != 'debian' && matrix.branch != 'mainline' }}
             type=raw,value=${{ matrix.platform }},enable=${{ !inputs.version && matrix.platform != 'debian' && matrix.branch == 'mainline' }}
 
       - name: Build and push Docker image
-        if: steps.image_check.outputs.exists == 'false'
+        if: steps.version_check.outputs.skip == 'false'
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -205,6 +131,6 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            NGINX_IMAGE=nginx:${{ inputs.version || steps.get_version.outputs.version }}${{ matrix.platform != 'debian' && format('-{0}', matrix.platform) || '' }}
-            NGINX_VERSION=${{ inputs.version || steps.get_version.outputs.version }}
+            NGINX_IMAGE=nginx:${{ steps.version_check.outputs.version }}${{ matrix.platform != 'debian' && format('-{0}', matrix.platform) || '' }}
+            NGINX_VERSION=${{ steps.version_check.outputs.version }}
             INSTALL_PKGS=${{ matrix.install_pkgs }}
