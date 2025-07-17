@@ -82,6 +82,6 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            NGINX_IMAGE=nginx:${{ inputs.version || steps.get_version.outputs.version }}${{ matrix.platform == 'debian' && '' || format('-{0}', matrix.platform) }}
+            NGINX_IMAGE=nginx:${{ inputs.version || steps.get_version.outputs.version }}${{ matrix.platform != 'debian' && format('-{0}', matrix.platform) || '' }}
             NGINX_VERSION=${{ inputs.version || steps.get_version.outputs.version }}
             INSTALL_PKGS=${{ matrix.install_pkgs }}
