@@ -88,7 +88,7 @@ jobs:
           fi
           
           # 检查镜像是否已存在（使用 manifest inspect 避免下载整个镜像）
-          image_name="ghcr.io/${{ github.repository_owner }}/nginx-brotli:$tag"
+          image_name="ghcr.io/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')/nginx-brotli:$tag"
           echo "检查镜像是否存在: $image_name"
           if docker manifest inspect "$image_name" > /dev/null 2>&1; then
             echo "镜像已存在: $tag，跳过构建"
