@@ -1,6 +1,7 @@
 name: Publish Docker image
 
 on:
+  push:
   workflow_dispatch:
     inputs:
       version:
@@ -108,8 +109,8 @@ jobs:
           images: ghcr.io/${{ github.repository_owner }}/nginx-brotli
           tags: |
             # 手动输入版本时只输出版本号
-            type=raw,value=${{ inputs.version }},enable=${{ inputs.version && matrix.platform == 'debian' }}
-            type=raw,value=${{ inputs.version }}-${{ matrix.platform }},enable=${{ inputs.version && matrix.platform != 'debian' }}
+            type=raw,value=${{ inputs.version }},enable=${{ inputs.version != '' && matrix.platform == 'debian' }}
+            type=raw,value=${{ inputs.version }}-${{ matrix.platform }},enable=${{ inputs.version != '' && matrix.platform != 'debian' }}
             # 自动检测版本时使用完整的semver格式
             type=semver,pattern={{version}},value=${{ steps.version_check.outputs.version }},enable=${{ !inputs.version && matrix.platform == 'debian' }}
             type=semver,pattern={{major}}.{{minor}},value=${{ steps.version_check.outputs.version }},enable=${{ !inputs.version && matrix.platform == 'debian' }}
