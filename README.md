@@ -112,7 +112,7 @@ cd docker-nginx-brotli
 # 构建 Debian 版本
 docker build --build-arg NGINX_IMAGE=nginx:1.25.3 \
              --build-arg NGINX_VERSION=1.25.3 \
-             --build-arg INSTALL_PKGS="apt-get update && apt-get install -y --no-install-recommends build-essential git libpcre3-dev libssl-dev zlib1g-dev libbrotli-dev wget" \
+             --build-arg INSTALL_PKGS="apt-get update && apt-get install -y --no-install-recommends build-essential git libpcre2-dev libssl-dev zlib1g-dev libbrotli-dev wget" \
              -t nginx-brotli:1.25.3 .
 
 # 构建 Alpine 版本
