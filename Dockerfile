@@ -16,10 +16,7 @@ RUN set -ex \
     && cd ngx_brotli \
     && git submodule update --init --recursive \
     && cd ../nginx-${NGINX_VERSION} \
-    && CONFIG=`nginx -V 2>&1 | tr '\n' ' ' | sed 's/^.* configure arguments: //g'` \
-    && echo "./configure --add-dynamic-module=../ngx_brotli $CONFIG" > configure.sh \
-    && chmod +x configure.sh \
-    && ./configure.sh \
+    && ./configure --with-compat --add-dynamic-module=../ngx_brotli \
     && make modules
 
 FROM $NGINX_IMAGE AS final
