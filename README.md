@@ -1,12 +1,13 @@
-# Docker Nginx with Brotli
+# Docker Nginx with Brotli and njs
 
-一个支持 Brotli 压缩的 Nginx Docker 镜像项目，基于官方 Nginx 镜像构建，支持 Debian 和 Alpine 两种基础镜像。
+一个支持 Brotli 压缩和 njs 脚本扩展的 Nginx Docker 镜像项目，基于官方 Nginx 镜像构建，支持 Debian 和 Alpine 两种基础镜像。
 
 ## 特性
 
 - 🚀 基于官方 Nginx 镜像构建
 - 📦 支持 Debian 和 Alpine 两种基础镜像
 - 🗜️ 内置 Google Brotli 压缩模块
+- 🧩 内置 NGINX JavaScript (njs) HTTP/Stream 动态模块
 - 🔄 自动跟踪 Nginx 官方版本更新
 - 🎯 支持 stable 和 mainline 两个分支
 - ⚡ 多架构支持
@@ -62,7 +63,7 @@ services:
 
 ## Brotli 配置
 
-Brotli 模块已经预装，需要手动引入加载，您可以在 Nginx 配置中启用它：
+Brotli 模块已经预装并在默认配置中加载。若您覆盖了 `/etc/nginx/nginx.conf`，需要在主配置顶层重新加载模块：
 
 ```nginx
 load_module /usr/lib/nginx/modules/ngx_http_brotli_filter_module.so;
@@ -89,6 +90,51 @@ http {
 }
 ```
 
+## njs 配置
+
+njs HTTP 模块已经预装并在默认配置中加载。若您覆盖了 `/etc/nginx/nginx.conf`，需要在主配置顶层重新加载模块：
+
+```nginx
+load_module /usr/lib/nginx/modules/ngx_http_js_module.so;
+```
+
+HTTP 示例：
+
+```nginx
+load_module /usr/lib/nginx/modules/ngx_http_js_module.so;
+
+events {}
+
+http {
+    js_path /etc/nginx/njs/;
+    js_import main from http/hello.js;
+
+    server {
+        listen 80;
+
+        location /hello {
+            js_content main.hello;
+        }
+    }
+}
+```
+
+`/etc/nginx/njs/http/hello.js` 示例：
+
+```javascript
+function hello(r) {
+    r.return(200, "Hello world!\n");
+}
+
+export default { hello };
+```
+
+`ngx_stream_js_module.so` 也会在默认配置中加载。若您覆盖了 `/etc/nginx/nginx.conf`，需要在主配置顶层重新加载：
+
+```nginx
+load_module /usr/lib/nginx/modules/ngx_stream_js_module.so;
+```
+
 ## 构建说明
 
 本项目使用 GitHub Actions 自动构建多个版本的镜像：
@@ -112,13 +158,13 @@ cd docker-nginx-brotli
 # 构建 Debian 版本
 docker build --build-arg NGINX_IMAGE=nginx:1.25.3 \
              --build-arg NGINX_VERSION=1.25.3 \
-             --build-arg INSTALL_PKGS="apt-get update && apt-get install -y --no-install-recommends build-essential git libpcre2-dev libssl-dev zlib1g-dev libbrotli-dev wget" \
+             --build-arg INSTALL_PKGS="apt-get update && apt-get install -y --no-install-recommends build-essential git libpcre2-dev libssl-dev zlib1g-dev libbrotli-dev curl jq" \
              -t nginx-brotli:1.25.3 .
 
 # 构建 Alpine 版本
 docker build --build-arg NGINX_IMAGE=nginx:1.25.3-alpine \
              --build-arg NGINX_VERSION=1.25.3 \
-             --build-arg INSTALL_PKGS="apk add --update --no-cache build-base git pcre-dev openssl-dev zlib-dev linux-headers brotli-dev" \
+             --build-arg INSTALL_PKGS="apk add --update --no-cache build-base git pcre-dev openssl-dev zlib-dev linux-headers brotli-dev curl jq" \
              -t nginx-brotli:1.25.3-alpine .
 ```
 
@@ -157,11 +203,13 @@ docker build --build-arg NGINX_IMAGE=nginx:1.25.3-alpine \
 ### Dockerfile 特性
 - 多阶段构建，减小最终镜像大小
 - 动态编译 Brotli 模块，确保与 Nginx 版本兼容
+- 构建时通过 GitHub Releases 自动获取最新 njs tag，并动态编译 njs HTTP/Stream 模块
 - 自动配置时区为 Asia/Shanghai
-- 预加载 Brotli 模块到 Nginx 配置
+- 预加载 Brotli 与 njs HTTP/Stream 模块到 Nginx 配置
 
 ### 依赖说明
 - **ngx_brotli**: Google 开发的 Nginx Brotli 模块
+- **njs**: NGINX 官方 JavaScript 动态模块
 - **构建工具**: 根据基础镜像选择合适的编译工具链
 
 ## 许可证
@@ -176,4 +224,5 @@ docker build --build-arg NGINX_IMAGE=nginx:1.25.3-alpine \
 
 - [Nginx 官方网站](https://nginx.org/)
 - [ngx_brotli 模块](https://github.com/google/ngx_brotli)
+- [njs 模块](https://github.com/nginx/njs)
 - [Brotli 压缩算法](https://github.com/google/brotli)
