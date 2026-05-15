@@ -17,9 +17,15 @@ RUN set -ex \
     && cd ngx_brotli \
     && git submodule update --init --recursive \
     && cd .. \
+    && git clone --depth 1 https://github.com/bellard/quickjs.git \
+    && cd quickjs \
+    && CFLAGS="-fPIC" make libquickjs.a \
+    && cd .. \
     && git clone --depth 1 --branch ${NJS_VERSION} https://github.com/nginx/njs.git \
     && cd nginx-${NGINX_VERSION} \
     && ./configure --with-compat --with-stream \
+        --with-cc-opt="-I/root/quickjs" \
+        --with-ld-opt="-L/root/quickjs" \
         --add-dynamic-module=../ngx_brotli \
         --add-dynamic-module=../njs/nginx \
     && make modules
@@ -32,7 +38,8 @@ RUN ln -snf /usr/share/zoneinfo/$TIME_ZONE /etc/localtime && echo $TIME_ZONE > /
     && sed -i '1iload_module /usr/lib/nginx/modules/ngx_http_brotli_filter_module.so;' /etc/nginx/nginx.conf \
     && sed -i '2iload_module /usr/lib/nginx/modules/ngx_http_brotli_static_module.so;' /etc/nginx/nginx.conf \
     && sed -i '3iload_module /usr/lib/nginx/modules/ngx_http_js_module.so;' /etc/nginx/nginx.conf \
-    && sed -i '4iload_module /usr/lib/nginx/modules/ngx_stream_js_module.so;' /etc/nginx/nginx.conf
+    && sed -i '4iload_module /usr/lib/nginx/modules/ngx_stream_js_module.so;' /etc/nginx/nginx.conf \
+    && sed -i '/http {/a\    js_engine qjs;' /etc/nginx/nginx.conf
 
 COPY --from=builder /root/nginx-${NGINX_VERSION}/objs/ngx_http_brotli_filter_module.so /usr/lib/nginx/modules/
 COPY --from=builder /root/nginx-${NGINX_VERSION}/objs/ngx_http_brotli_static_module.so /usr/lib/nginx/modules/

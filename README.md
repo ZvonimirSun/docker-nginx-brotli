@@ -8,6 +8,7 @@
 - 📦 支持 Debian 和 Alpine 两种基础镜像
 - 🗜️ 内置 Google Brotli 压缩模块
 - 🧩 内置 NGINX JavaScript (njs) HTTP/Stream 动态模块
+- ⚙️ njs 使用 QuickJS engine
 - 🔄 自动跟踪 Nginx 官方版本更新
 - 🎯 支持 stable 和 mainline 两个分支
 - ⚡ 多架构支持
@@ -92,10 +93,14 @@ http {
 
 ## njs 配置
 
-njs HTTP 模块已经预装并在默认配置中加载。若您覆盖了 `/etc/nginx/nginx.conf`，需要在主配置顶层重新加载模块：
+njs HTTP 模块已经预装并在默认配置中加载，默认使用 QuickJS engine。若您覆盖了 `/etc/nginx/nginx.conf`，需要在主配置顶层重新加载模块，并在 `http` 块中启用 `qjs`：
 
 ```nginx
 load_module /usr/lib/nginx/modules/ngx_http_js_module.so;
+
+http {
+    js_engine qjs;
+}
 ```
 
 HTTP 示例：
@@ -106,6 +111,7 @@ load_module /usr/lib/nginx/modules/ngx_http_js_module.so;
 events {}
 
 http {
+    js_engine qjs;
     js_path /etc/nginx/njs/;
     js_import main from http/hello.js;
 
@@ -133,6 +139,10 @@ export default { hello };
 
 ```nginx
 load_module /usr/lib/nginx/modules/ngx_stream_js_module.so;
+
+stream {
+    js_engine qjs;
+}
 ```
 
 ## 构建说明
@@ -204,12 +214,14 @@ docker build --build-arg NGINX_IMAGE=nginx:1.25.3-alpine \
 - 多阶段构建，减小最终镜像大小
 - 动态编译 Brotli 模块，确保与 Nginx 版本兼容
 - 构建时通过 GitHub Releases 自动获取最新 njs tag，并动态编译 njs HTTP/Stream 模块
+- 构建 QuickJS 静态库，并将 njs 默认切换到 QuickJS engine
 - 自动配置时区为 Asia/Shanghai
 - 预加载 Brotli 与 njs HTTP/Stream 模块到 Nginx 配置
 
 ### 依赖说明
 - **ngx_brotli**: Google 开发的 Nginx Brotli 模块
 - **njs**: NGINX 官方 JavaScript 动态模块
+- **QuickJS**: njs 使用的 JavaScript engine
 - **构建工具**: 根据基础镜像选择合适的编译工具链
 
 ## 许可证
@@ -225,4 +237,5 @@ docker build --build-arg NGINX_IMAGE=nginx:1.25.3-alpine \
 - [Nginx 官方网站](https://nginx.org/)
 - [ngx_brotli 模块](https://github.com/google/ngx_brotli)
 - [njs 模块](https://github.com/nginx/njs)
+- [QuickJS](https://bellard.org/quickjs/)
 - [Brotli 压缩算法](https://github.com/google/brotli)
