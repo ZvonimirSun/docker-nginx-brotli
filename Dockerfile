@@ -21,7 +21,7 @@ RUN set -ex \
     && cd quickjs \
     && CFLAGS="-fPIC" make libquickjs.a \
     && cd .. \
-    && git clone --depth 1 --branch ${NJS_VERSION} https://github.com/nginx/njs.git \
+    && git clone --depth 1 --branch "${NJS_VERSION}" https://github.com/nginx/njs.git \
     && cd nginx-${NGINX_VERSION} \
     && ./configure --with-compat --with-stream \
         --with-cc-opt="-I/root/quickjs" \
