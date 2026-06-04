@@ -168,13 +168,13 @@ cd docker-nginx-brotli
 # 构建 Debian 版本
 docker build --build-arg NGINX_IMAGE=nginx:1.25.3 \
              --build-arg NGINX_VERSION=1.25.3 \
-             --build-arg INSTALL_PKGS="apt-get update && apt-get install -y --no-install-recommends build-essential git libpcre2-dev libssl-dev zlib1g-dev libbrotli-dev curl jq" \
+             --build-arg INSTALL_PKGS="apt-get update && apt-get install -y --no-install-recommends build-essential git libpcre2-dev libssl-dev zlib1g-dev libbrotli-dev libxml2-dev libxslt1-dev curl jq" \
              -t nginx-brotli:1.25.3 .
 
 # 构建 Alpine 版本
 docker build --build-arg NGINX_IMAGE=nginx:1.25.3-alpine \
              --build-arg NGINX_VERSION=1.25.3 \
-             --build-arg INSTALL_PKGS="apk add --update --no-cache build-base git pcre-dev openssl-dev zlib-dev linux-headers brotli-dev curl jq" \
+             --build-arg INSTALL_PKGS="apk add --update --no-cache build-base git pcre-dev openssl-dev zlib-dev linux-headers brotli-dev libxml2-dev libxslt-dev curl jq" \
              -t nginx-brotli:1.25.3-alpine .
 ```
 
@@ -215,6 +215,7 @@ docker build --build-arg NGINX_IMAGE=nginx:1.25.3-alpine \
 - 动态编译 Brotli 模块，确保与 Nginx 版本兼容
 - 构建时通过 GitHub Releases 自动获取最新 njs tag，并动态编译 njs HTTP/Stream 模块
 - 构建 QuickJS 静态库，并将 njs 默认切换到 QuickJS engine
+- 保留 njs XML/XSLT 能力，并在构建阶段安装对应开发库
 - 自动配置时区为 Asia/Shanghai
 - 预加载 Brotli 与 njs HTTP/Stream 模块到 Nginx 配置
 
@@ -222,6 +223,7 @@ docker build --build-arg NGINX_IMAGE=nginx:1.25.3-alpine \
 - **ngx_brotli**: Google 开发的 Nginx Brotli 模块
 - **njs**: NGINX 官方 JavaScript 动态模块
 - **QuickJS**: njs 使用的 JavaScript engine
+- **libxml2/libxslt**: njs XML/XSLT 能力所需依赖
 - **构建工具**: 根据基础镜像选择合适的编译工具链
 
 ## 许可证
