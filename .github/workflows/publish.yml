@@ -97,7 +97,7 @@ jobs:
       - name: Extract metadata (tags, labels) for Docker
         if: steps.version_check.outputs.skip == 'false'
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository_owner }}/nginx-brotli
           tags: |
