@@ -11,7 +11,7 @@
 - ⚙️ njs 使用 QuickJS engine
 - 🔄 自动跟踪 Nginx 官方版本更新
 - 🎯 支持 stable 和 mainline 两个分支
-- ⚡ 多架构支持
+- ⚡ 支持 Linux AMD64 和 ARM64（包括 ARM64/v8 服务器）
 
 ## 快速开始
 
@@ -47,6 +47,27 @@ services:
       - ./html:/usr/share/nginx/html:ro
     restart: unless-stopped
 ```
+
+### ARM64 服务器拉取失败
+
+如果出现 `no matching manifest for linux/arm64/v8`，表示所拉取标签的镜像清单中缺少 ARM64 架构。可检查该标签实际发布的架构：
+
+```bash
+docker buildx imagetools inspect ghcr.io/zvonimirsun/nginx-brotli:latest
+```
+
+发布工作流会同时构建 `linux/amd64` 和 `linux/arm64`，并为缺少架构的已有版本重新构建。更新工作流后，在 GitHub Actions 中手动运行 `Publish Docker image`，版本留空可补齐当前 stable/mainline 版本及其别名；如果使用历史版本标签，请填写对应的 Nginx 版本号。
+
+等待发布成功后，确认镜像清单包含 `linux/arm64`，再在 ARM 服务器重新拉取：
+
+```bash
+docker pull ghcr.io/zvonimirsun/nginx-brotli:latest
+# 使用 Compose 部署时
+docker compose pull nginx
+docker compose up -d nginx
+```
+
+`--platform linux/arm64` 只能选择已发布的架构，无法为已有镜像生成 ARM64 版本。
 
 ## 镜像标签说明
 
@@ -183,7 +204,7 @@ docker build --build-arg NGINX_IMAGE=nginx:1.25.3-alpine \
 项目使用 GitHub Actions 自动化构建和发布：
 
 1. **版本检测**: 自动从官方 Nginx 镜像获取最新版本号
-2. **多平台构建**: 同时构建 Debian 和 Alpine 版本
+2. **多平台构建**: 为 Debian 和 Alpine 版本分别构建 Linux AMD64 和 ARM64 镜像
 3. **自动标签**: 根据版本和平台自动生成合适的镜像标签
 4. **自动发布**: 构建完成后自动推送到 GitHub Container Registry
 

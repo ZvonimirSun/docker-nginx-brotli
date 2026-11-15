@@ -81,14 +81,17 @@ jobs:
             tag="$version-${{ matrix.platform }}"
           fi
           
-          # 检查镜像是否已存在（使用 manifest inspect 避免下载整个镜像）
+          # 只有 AMD64 和 ARM64 均已发布时才跳过，允许为旧标签补齐架构
           image_name="ghcr.io/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')/nginx-brotli:$tag"
-          echo "检查镜像是否存在: $image_name"
-          if docker manifest inspect "$image_name" > /dev/null 2>&1; then
-            echo "镜像已存在: $tag，跳过构建"
+          echo "检查镜像架构: $image_name"
+          if docker manifest inspect "$image_name" | jq -e '
+            any(.manifests[]?; .platform.os == "linux" and .platform.architecture == "amd64")
+            and any(.manifests[]?; .platform.os == "linux" and .platform.architecture == "arm64")
+          ' > /dev/null; then
+            echo "镜像已包含 AMD64 和 ARM64: $tag，跳过构建"
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
-            echo "镜像不存在: $tag，需要构建"
+            echo "镜像不存在或缺少所需架构: $tag，需要构建"
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
           
@@ -135,6 +138,7 @@ jobs:
         with:
           context: .
           file: Dockerfile
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
